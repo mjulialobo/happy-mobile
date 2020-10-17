@@ -1,18 +1,42 @@
-import React from 'react';
-import { StyleSheet, Text, View, Dimensions, TouchableOpacity } from 'react-native';
+import React , { useState}from 'react';
+import { StyleSheet, Text, View, Dimensions } from 'react-native';
 import MapView, {Marker, Callout, PROVIDER_GOOGLE} from 'react-native-maps';
 import {Feather} from '@expo/vector-icons';
-import {useNavigation} from '@react-navigation/native'
+import {useNavigation, useFocusEffect} from '@react-navigation/native'
+import { RectButton } from 'react-native-gesture-handler';
+
 import mapMarker from '../images/map-marker.png';
 
-export default function SheltersMap(){
-    const navigation = useNavigation();
+import api from '../services/api';
 
-    function handleNavigateToShelterDetails(){
-        navigation.navigate('ShelterDetails')
-    }
-    return(
-        <View style={styles.container}>
+interface Shelter{
+  id: number;
+  name: string;
+  latitude: number;
+  longitude: number;
+}
+
+export default function SheltersMap(){
+  const [shelters, setShelters] = useState<Shelter[]>([]);
+
+  const navigation = useNavigation();
+
+  useFocusEffect(()=>{
+    api.get('shelters').then(response => {
+      setShelters(response.data)
+    });
+  });
+
+  function handleNavigateToShelterDetails(id:number){
+    navigation.navigate('ShelterDetails', {id});
+  }
+
+  function handleNavigateToCreateShelter(){
+    navigation.navigate('SelectMapPosition');
+  }
+
+  return(
+    <View style={styles.container}>
       <MapView 
         provider={PROVIDER_GOOGLE}
         style={styles.map} 
@@ -23,34 +47,39 @@ export default function SheltersMap(){
           longitudeDelta:0.008,
         }}
       >
+       {shelters.map (shelter => {
+         return(
           <Marker
-          icon={mapMarker}
-          calloutAnchor={{
-            x:0.5,
-            y:-0.1,
-          }}
-          coordinate={{
-            latitude: -23.5803183,
-            longitude:-46.7816684,
-          }}
+            key={shelter.id}
+            icon={mapMarker}
+            calloutAnchor={{
+              x:0.5,
+              y:-0.1,
+            }}
+            coordinate={{
+              latitude: shelter.latitude,
+              longitude: shelter.longitude,
+            }}
           >
-          <Callout tooltip onPress= {handleNavigateToShelterDetails}>
+          <Callout tooltip onPress= {()=>handleNavigateToShelterDetails(shelter.id)}>
             <View style={styles.calloutContainer}>
-            <Text style= {styles.calloutText}>Associação protetora dos animais</Text>
+            <Text style= {styles.calloutText}>{shelter.name}</Text>
             </View>
           </Callout>
-          </Marker>
+        </Marker>
+         );
+       })}
       </MapView>
 
       <View style={styles.footer}>
-        <Text style={styles.footerText}>1 abrigo encontrado</Text>
-        <TouchableOpacity style={styles.createShelterButton} onPress= {()=> {}}>
+        <Text style={styles.footerText}> {shelters.length} abrigos encontrados</Text>
+        <RectButton style={styles.createShelterButton} onPress= {handleNavigateToCreateShelter}>
             <Feather name="plus" size={20} color="#FFF"/>
-        </TouchableOpacity>
+        </RectButton>
 
       </View>
     </View>
-    )
+  )
 }
 
 const styles = StyleSheet.create({
